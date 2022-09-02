@@ -1,0 +1,921 @@
+diff --git a/arch/arm/dts/Makefile b/arch/arm/dts/Makefile
+index b129fcce..7cc895df 100644
+--- a/arch/arm/dts/Makefile
++++ b/arch/arm/dts/Makefile
+@@ -656,7 +656,8 @@ dtb-$(CONFIG_MACH_SUN50I_H6) += \
+ 	sun50i-h6-pine-h64-model-b.dtb \
+ 	sun50i-h6-tanix-tx6.dtb
+ dtb-$(CONFIG_MACH_SUN50I_H616) += \
+-	sun50i-h616-orangepi-zero2.dtb
++	sun50i-h616-orangepi-zero2.dtb \
++	sun50i-h616-btt-cb1.dtb
+ dtb-$(CONFIG_MACH_SUN50I) += \
+ 	sun50i-a64-amarula-relic.dtb \
+ 	sun50i-a64-bananapi-m64.dtb \
+diff --git a/arch/arm/dts/sun50i-h616-btt-cb1.dts b/arch/arm/dts/sun50i-h616-btt-cb1.dts
+new file mode 100644
+index 00000000..fda055da
+--- /dev/null
++++ b/arch/arm/dts/sun50i-h616-btt-cb1.dts
+@@ -0,0 +1,242 @@
++// SPDX-License-Identifier: (GPL-2.0+ or MIT)
++/*
++ * Copyright (C) 2020 Arm Ltd.
++ */
++
++/dts-v1/;
++
++#include "sun50i-h616.dtsi"
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/arm-gic.h>
++#include <dt-bindings/leds/common.h>
++
++/ {
++	model = "BTT CB1";
++	compatible = "allwinner,sun50i-h616";
++
++	aliases {
++		ethernet0 = &emac0;
++		serial0 = &uart0;
++	};
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++
++	leds {
++		compatible = "gpio-leds";
++
++		led-0 {
++			function = LED_FUNCTION_POWER;
++			color = <LED_COLOR_ID_RED>;
++			gpios = <&pio 2 12 GPIO_ACTIVE_HIGH>; /* PC12 */
++			default-state = "on";
++		};
++
++		led-1 {
++			function = LED_FUNCTION_STATUS;
++			color = <LED_COLOR_ID_GREEN>;
++			gpios = <&pio 2 13 GPIO_ACTIVE_HIGH>; /* PC13 */
++		};
++	};
++
++	reg_vcc5v: vcc5v {
++		/* board wide 5V supply directly from the USB-C socket */
++		compatible = "regulator-fixed";
++		regulator-name = "vcc-5v";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		regulator-always-on;
++	};
++
++	reg_usb1_vbus: usb1-vbus {
++		compatible = "regulator-fixed";
++		regulator-name = "usb1-vbus";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		vin-supply = <&reg_vcc5v>;
++		enable-active-high;
++		gpio = <&pio 2 16 GPIO_ACTIVE_HIGH>; /* PC16 */
++		status = "okay";
++	};
++};
++
++&ehci0 {
++	status = "okay";
++};
++
++&ehci1 {
++	status = "okay";
++};
++
++/* USB 2 & 3 are on headers only. */
++
++&emac0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&ext_rgmii_pins>;
++	phy-mode = "rgmii";
++	phy-handle = <&ext_rgmii_phy>;
++	phy-supply = <&reg_dcdce>;
++	allwinner,rx-delay-ps = <3100>;
++	allwinner,tx-delay-ps = <700>;
++	status = "okay";
++};
++
++&mdio0 {
++	ext_rgmii_phy: ethernet-phy@1 {
++		compatible = "ethernet-phy-ieee802.3-c22";
++		reg = <1>;
++	};
++};
++
++&mmc0 {
++	vmmc-supply = <&reg_dcdce>;
++	// cd-gpios = <&pio 5 6 GPIO_ACTIVE_LOW>;	/* PF6 */
++	bus-width = <4>;
++	status = "okay";
++};
++
++&ohci0 {
++	status = "okay";
++};
++
++&ohci1 {
++	status = "okay";
++};
++
++&r_rsb {
++	status = "okay";
++
++	axp305: pmic@745 {
++		compatible = "x-powers,axp305", "x-powers,axp805",
++			     "x-powers,axp806";
++		interrupt-controller;
++		#interrupt-cells = <1>;
++		reg = <0x745>;
++
++		x-powers,self-working-mode;
++		vina-supply = <&reg_vcc5v>;
++		vinb-supply = <&reg_vcc5v>;
++		vinc-supply = <&reg_vcc5v>;
++		vind-supply = <&reg_vcc5v>;
++		vine-supply = <&reg_vcc5v>;
++		aldoin-supply = <&reg_vcc5v>;
++		bldoin-supply = <&reg_vcc5v>;
++		cldoin-supply = <&reg_vcc5v>;
++
++		regulators {
++			reg_aldo1: aldo1 {
++				regulator-always-on;
++				regulator-min-microvolt = <3300000>;
++				regulator-max-microvolt = <3300000>;
++				regulator-name = "vcc-sys";
++			};
++
++			reg_aldo2: aldo2 {	/* 3.3V on headers */
++				regulator-always-on;
++				regulator-min-microvolt = <3300000>;
++				regulator-max-microvolt = <3300000>;
++				regulator-name = "vcc3v3-ext";
++			};
++
++			reg_aldo3: aldo3 {	/* 3.3V on headers */
++				regulator-always-on;
++				regulator-min-microvolt = <3300000>;
++				regulator-max-microvolt = <3300000>;
++				regulator-name = "vcc3v3-ext2";
++			};
++
++			reg_bldo1: bldo1 {
++				regulator-always-on;
++				regulator-min-microvolt = <1800000>;
++				regulator-max-microvolt = <1800000>;
++				regulator-name = "vcc1v8";
++			};
++
++			bldo2 {
++				/* unused */
++			};
++
++			bldo3 {
++				/* unused */
++			};
++
++			bldo4 {
++				/* unused */
++			};
++
++			cldo1 {
++				/* reserved */
++			};
++
++			cldo2 {
++				/* unused */
++			};
++
++			cldo3 {
++				/* unused */
++			};
++
++			reg_dcdca: dcdca {
++				regulator-always-on;
++				regulator-min-microvolt = <810000>;
++				regulator-max-microvolt = <1080000>;
++				regulator-name = "vdd-cpu";
++			};
++
++			reg_dcdcc: dcdcc {
++				regulator-always-on;
++				regulator-min-microvolt = <810000>;
++				regulator-max-microvolt = <1080000>;
++				regulator-name = "vdd-gpu-sys";
++			};
++
++			reg_dcdcd: dcdcd {
++				regulator-always-on;
++				regulator-min-microvolt = <1500000>;
++				regulator-max-microvolt = <1500000>;
++				regulator-name = "vdd-dram";
++			};
++
++			reg_dcdce: dcdce {
++				regulator-boot-on;
++				regulator-min-microvolt = <3300000>;
++				regulator-max-microvolt = <3300000>;
++				regulator-name = "vcc-eth-mmc";
++			};
++
++			sw {
++				/* unused */
++			};
++		};
++	};
++};
++
++&spi0  {
++	status = "okay";
++
++	flash@0 {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		compatible = "jedec,spi-nor";
++		reg = <0>;
++		spi-max-frequency = <40000000>;
++	};
++};
++
++&uart0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart0_ph_pins>;
++	status = "okay";
++};
++
++&usbotg {
++	dr_mode = "peripheral";
++	status = "okay";
++};
++
++&usbphy {
++	usb1_vbus-supply = <&reg_usb1_vbus>;
++	status = "okay";
++};
+diff --git a/arch/arm/mach-sunxi/pmic_bus.c b/arch/arm/mach-sunxi/pmic_bus.c
+index 393a198c..ef0ca38e 100644
+--- a/arch/arm/mach-sunxi/pmic_bus.c
++++ b/arch/arm/mach-sunxi/pmic_bus.c
+@@ -21,6 +21,7 @@
+ 
+ #define AXP305_I2C_ADDR			0x36
+ #define AXP806_I2C_ADDR			0x36
++#define AXP1530_I2C_ADDR 0x36
+ 
+ #define AXP221_CHIP_ADDR		0x68
+ #define AXP221_CTRL_ADDR		0x3e
+@@ -76,6 +77,8 @@ int pmic_bus_read(u8 reg, u8 *data)
+ 	return i2c_read(AXP305_I2C_ADDR, reg, 1, data, 1);
+ #elif defined CONFIG_AXP806_POWER
+ 	return i2c_read(AXP806_I2C_ADDR, reg, 1, data, 1);
++#elif defined CONFIG_AXP1530_POWER
++    return i2c_read(AXP1530_I2C_ADDR, reg, 1, data, 1);
+ #elif defined CONFIG_AXP221_POWER || defined CONFIG_AXP809_POWER || defined CONFIG_AXP818_POWER
+ # ifdef CONFIG_MACH_SUN6I
+ 	return p2wi_read(reg, data);
+@@ -97,6 +100,8 @@ int pmic_bus_write(u8 reg, u8 data)
+ 	return i2c_write(AXP305_I2C_ADDR, reg, 1, &data, 1);
+ #elif defined CONFIG_AXP806_POWER
+ 	return i2c_write(AXP806_I2C_ADDR, reg, 1, &data, 1);
++#elif defined CONFIG_AXP1530_POWER
++    return i2c_write(AXP1530_I2C_ADDR, reg, 1, &data, 1);
+ #elif defined CONFIG_AXP221_POWER || defined CONFIG_AXP809_POWER || defined CONFIG_AXP818_POWER
+ # ifdef CONFIG_MACH_SUN6I
+ 	return p2wi_write(reg, data);
+diff --git a/board/sunxi/board.c b/board/sunxi/board.c
+index c7991e1d..9b606e3f 100644
+--- a/board/sunxi/board.c
++++ b/board/sunxi/board.c
+@@ -692,6 +692,7 @@ static void sunxi_spl_store_dram_size(phys_addr_t dram_size)
+ void sunxi_board_init(void)
+ {
+ 	int power_failed = 0;
++    int power_volume = 0;
+ 
+ #if defined(CONFIG_MACH_SUN50I_H6)
+ 	gpio_direction_output(SUNXI_GPL(4), 1);
+@@ -710,18 +711,18 @@ void sunxi_board_init(void)
+ #if defined CONFIG_AXP152_POWER || defined CONFIG_AXP209_POWER || \
+ 	defined CONFIG_AXP221_POWER || defined CONFIG_AXP305_POWER || \
+ 	defined CONFIG_AXP809_POWER || defined CONFIG_AXP818_POWER || \
+-	defined CONFIG_AXP806_POWER
++	defined CONFIG_AXP806_POWER || defined CONFIG_AXP1530_POWER
+ 	power_failed = axp_init();
+ 
+ #if defined CONFIG_AXP221_POWER || defined CONFIG_AXP809_POWER || \
+ 	defined CONFIG_AXP818_POWER
+ 	power_failed |= axp_set_dcdc1(CONFIG_AXP_DCDC1_VOLT);
+ #endif
+-#if !defined(CONFIG_AXP305_POWER) && !defined(CONFIG_AXP806_POWER)
++#if !defined(CONFIG_AXP305_POWER) && !defined(CONFIG_AXP806_POWER) && !defined(CONFIG_AXP1530_POWER)
+ 	power_failed |= axp_set_dcdc2(CONFIG_AXP_DCDC2_VOLT);
+ 	power_failed |= axp_set_dcdc3(CONFIG_AXP_DCDC3_VOLT);
+ #endif
+-#if !defined(CONFIG_AXP209_POWER) && !defined(CONFIG_AXP818_POWER)
++#if !defined(CONFIG_AXP209_POWER) && !defined(CONFIG_AXP818_POWER) && !defined(CONFIG_AXP1530_POWER)
+ 	power_failed |= axp_set_dcdc4(CONFIG_AXP_DCDC4_VOLT);
+ #endif
+ #if defined CONFIG_AXP221_POWER || defined CONFIG_AXP809_POWER || \
+@@ -733,13 +734,34 @@ void sunxi_board_init(void)
+ 	defined CONFIG_AXP818_POWER
+ 	power_failed |= axp_set_aldo1(CONFIG_AXP_ALDO1_VOLT);
+ #endif
+-#if !defined(CONFIG_AXP305_POWER) && !defined(CONFIG_AXP806_POWER)
++#if !defined(CONFIG_AXP305_POWER) && !defined(CONFIG_AXP806_POWER) && !defined(CONFIG_AXP1530_POWER)
+ 	power_failed |= axp_set_aldo2(CONFIG_AXP_ALDO2_VOLT);
+ #endif
+ #if !defined(CONFIG_AXP152_POWER) && !defined(CONFIG_AXP305_POWER) && \
+-	!defined(CONFIG_AXP806_POWER)
++	!defined(CONFIG_AXP806_POWER) && !defined(CONFIG_AXP1530_POWER)
+ 	power_failed |= axp_set_aldo3(CONFIG_AXP_ALDO3_VOLT);
+ #endif
++#if defined(CONFIG_AXP1530_POWER)
++    power_failed |= pmu_axp1530_set_voltage("dcdc1", 960, 1);
++    power_volume = pmu_axp1530_get_voltage("dcdc1");
++    // printf("dcdc1_power: %d \n", power_volume);
++
++    power_failed |= pmu_axp1530_set_voltage("dcdc2", 1000, 1);
++    power_volume = pmu_axp1530_get_voltage("dcdc2");
++    // printf("dcdc2_power: %d \n", power_volume);
++
++    power_failed |= pmu_axp1530_set_voltage("dcdc3", 1500, 1);
++    power_volume = pmu_axp1530_get_voltage("dcdc3");
++    // printf("dcdc3_power: %d \n", power_volume);
++
++    power_failed |= pmu_axp1530_set_voltage("aldo1", 1800, 1);
++    power_volume = pmu_axp1530_get_voltage("aldo1");
++    // printf("aldo1_power: %d \n", power_volume);
++
++    power_failed |= pmu_axp1530_set_voltage("dldo1", 3300, 1);
++    power_volume = pmu_axp1530_get_voltage("dldo1");
++    // printf("dldo1_power: %d \n", power_volume);
++#endif
+ #ifdef CONFIG_AXP209_POWER
+ 	power_failed |= axp_set_aldo4(CONFIG_AXP_ALDO4_VOLT);
+ #endif
+diff --git a/configs/btt_cb1_defconfig b/configs/btt_cb1_defconfig
+new file mode 100644
+index 00000000..ea4fc6b6
+--- /dev/null
++++ b/configs/btt_cb1_defconfig
+@@ -0,0 +1,19 @@
++CONFIG_ARM=y
++CONFIG_ARCH_SUNXI=y
++CONFIG_DEFAULT_DEVICE_TREE="sun50i-h616-btt-cb1"
++CONFIG_SPL=y
++CONFIG_DRAM_SUN50I_H616_WRITE_LEVELING=y
++CONFIG_DRAM_SUN50I_H616_READ_CALIBRATION=y
++CONFIG_DRAM_SUN50I_H616_READ_TRAINING=y
++CONFIG_DRAM_SUN50I_H616_WRITE_TRAINING=y
++CONFIG_MACH_SUN50I_H616=y
++CONFIG_MMC0_CD_PIN=""
++CONFIG_R_I2C_ENABLE=y
++CONFIG_SYS_MALLOC_CLEAR_ON_INIT=y
++CONFIG_SPL_I2C=y
++CONFIG_PHY_REALTEK=y
++CONFIG_SUN8I_EMAC=y
++CONFIG_PWRLED="PC12"
++CONFIG_BOOTDELAY=1
++CONFIG_OF_LIST="sun50i-h616-btt-cb1"
++CONFIG_AXP1530_POWER=y
+\ No newline at end of file
+diff --git a/drivers/power/Kconfig b/drivers/power/Kconfig
+index 24f29102..9c72f7bb 100644
+--- a/drivers/power/Kconfig
++++ b/drivers/power/Kconfig
+@@ -52,7 +52,7 @@ config AXP221_POWER
+ 
+ config AXP305_POWER
+ 	bool "axp305 pmic support"
+-	depends on MACH_SUN50I_H616
++	depends on MACH_SUN50I_H616 || MACH_SUN50I_H6
+ 	select AXP_PMIC_BUS
+ 	select CMD_POWEROFF
+ 	---help---
+@@ -61,13 +61,22 @@ config AXP305_POWER
+ 
+ config AXP806_POWER
+ 	bool "axp806 pmic support"
+-	depends on MACH_SUN50I_H6
++	depends on MACH_SUN50I_H6 || MACH_SUN50I_H616
+ 	select AXP_PMIC_BUS
+ 	select CMD_POWEROFF
+ 	---help---
+ 	Select this to enable support for the axp806 pmic found on most
+ 	H6 boards.
+ 
++config AXP1530_POWER
++	bool "axp1530 pmic support"
++	depends on MACH_SUN50I_H616 || MACH_SUN50I_H6
++	select AXP_PMIC_BUS
++	select CMD_POWEROFF
++	---help---
++	Select this to enable support for the axp1530 pmic found on most
++	H616 boards.
++
+ config AXP809_POWER
+ 	bool "axp809 pmic support"
+ 	depends on MACH_SUN9I
+diff --git a/drivers/power/Makefile b/drivers/power/Makefile
+index 5fb75b4b..752b7477 100644
+--- a/drivers/power/Makefile
++++ b/drivers/power/Makefile
+@@ -8,6 +8,7 @@ obj-$(CONFIG_AXP209_POWER)	+= axp209.o
+ obj-$(CONFIG_AXP221_POWER)	+= axp221.o
+ obj-$(CONFIG_AXP305_POWER)	+= axp305.o
+ obj-$(CONFIG_AXP806_POWER)	+= axp806.o
++obj-$(CONFIG_AXP1530_POWER)	+= axp1530.o
+ obj-$(CONFIG_AXP809_POWER)	+= axp809.o
+ obj-$(CONFIG_AXP818_POWER)	+= axp818.o
+ obj-$(CONFIG_EXYNOS_TMU)	+= exynos-tmu.o
+diff --git a/drivers/power/axp1530.c b/drivers/power/axp1530.c
+new file mode 100755
+index 00000000..5fea1feb
+--- /dev/null
++++ b/drivers/power/axp1530.c
+@@ -0,0 +1,391 @@
++/*
++ * Copyright (C) 2019 Allwinner.
++ * weidonghui <weidonghui@allwinnertech.com>
++ *
++ * SUNXI AXP21  Driver
++ *
++ * SPDX-License-Identifier: GPL-2.0+
++ */
++
++#include <common.h>
++
++// #include <asm/arch/pmic_bus_1530.h>
++
++#include <errno.h>
++#include <asm/arch/pmic_bus.h>
++#include <axp_pmic.h>
++
++#include <axp1530.h>
++// #include "axp.h"
++
++/*#include <power/sunxi/pmu.h>*/
++
++#ifdef PMU_DEBUG
++#define axp_info(fmt...) printf("[axp][info]: " fmt)
++#define axp_err(fmt...) printf("[axp][err]: " fmt)
++#else
++#define axp_info(fmt...)
++#define axp_err(fmt...) printf("[axp][err]: " fmt)
++#endif
++
++typedef struct _axp_contrl_info
++{
++    char name[16];
++
++    u32 min_vol;
++    u32 max_vol;
++    u32 cfg_reg_addr;
++    u32 cfg_reg_mask;
++
++    u32 step0_val;
++    u32 split1_val;
++    u32 step1_val;
++    u32 ctrl_reg_addr;
++
++    u32 ctrl_bit_ofs;
++    u32 step2_val;
++    u32 split2_val;
++} axp_contrl_info;
++
++__attribute__((section(".data"))) axp_contrl_info pmu_axp1530_ctrl_tbl[] = {
++    /*name,    min,  max, reg,  mask, step0,split1_val, step1,ctrl_reg,ctrl_bit */
++    {"dcdc1", 500, 3400, AXP1530_DC1OUT_VOL, 0x7f, 10, 1200, 20,
++     AXP1530_OUTPUT_POWER_ON_OFF_CTL, 0, 100, 1540},
++    {"dcdc2", 500, 1540, AXP1530_DC2OUT_VOL, 0x7f, 10, 1200, 20,
++     AXP1530_OUTPUT_POWER_ON_OFF_CTL, 1},
++    {"dcdc3", 500, 1840, AXP1530_DC3OUT_VOL, 0x7f, 10, 1200, 20,
++     AXP1530_OUTPUT_POWER_ON_OFF_CTL, 2},
++    {"aldo1", 500, 3500, AXP1530_ALDO1OUT_VOL, 0x1f, 100, 0, 0,
++     AXP1530_OUTPUT_POWER_ON_OFF_CTL, 3},
++    {"dldo1", 500, 3500, AXP1530_DLDO1OUT_VOL, 0x1f, 100, 0, 0,
++     AXP1530_OUTPUT_POWER_ON_OFF_CTL, 4},
++
++};
++
++static axp_contrl_info *get_ctrl_info_from_tbl(char *name)
++{
++    int i = 0;
++    int size = ARRAY_SIZE(pmu_axp1530_ctrl_tbl);
++    axp_contrl_info *p;
++
++    for (i = 0; i < size; i++)
++    {
++        if (!strncmp(name, pmu_axp1530_ctrl_tbl[i].name,
++                     strlen(pmu_axp1530_ctrl_tbl[i].name)))
++        {
++            break;
++        }
++    }
++    if (i >= size)
++    {
++        axp_err("can't find %s from table\n", name);
++        return NULL;
++    }
++    p = pmu_axp1530_ctrl_tbl + i;
++    return p;
++}
++
++int pmu_axp1530_necessary_reg_enable(void)
++{
++    __attribute__((unused)) u8 reg_value;
++#ifdef CONFIG_AXP1530A_NECESSARY_REG_ENABLE
++    if (pmic_bus_read(AXP1530_RUNTIME_ADDR, AXP1530_WRITE_LOCK, &reg_value))
++        return -1;
++    reg_value |= 0x5;
++    if (pmic_bus_write(AXP1530_RUNTIME_ADDR, AXP1530_WRITE_LOCK, reg_value))
++        return -1;
++
++    if (pmic_bus_read(AXP1530_RUNTIME_ADDR, AXP1530_ERROR_MANAGEMENT, &reg_value))
++        return -1;
++    reg_value |= 0x8;
++    if (pmic_bus_write(AXP1530_RUNTIME_ADDR, AXP1530_ERROR_MANAGEMENT, reg_value))
++        return -1;
++
++    if (pmic_bus_read(AXP1530_RUNTIME_ADDR, AXP1530_DCDC_DVM_PWM_CTL, &reg_value))
++        return -1;
++    reg_value |= (0x1 << 5);
++    if (pmic_bus_write(AXP1530_RUNTIME_ADDR, AXP1530_DCDC_DVM_PWM_CTL, reg_value))
++        return -1;
++#endif
++    return 0;
++}
++
++int axp_init(void)
++// static int pmu_axp1530_probe(void)
++{
++    u8 pmu_chip_id;
++    // printf("axp_init begin!\n");
++    if (pmic_bus_init())
++    {
++        printf("%s pmic_bus_init fail\n", __func__);
++        return -1;
++    }
++    if (pmic_bus_read(AXP1530_VERSION, &pmu_chip_id))
++    {
++        printf("%s pmic_bus_read fail\n", __func__);
++        return -1;
++    }
++    pmu_chip_id &= 0XCF;
++    if (pmu_chip_id == AXP1530_CHIP_ID || pmu_chip_id == AXP313A_CHIP_ID || pmu_chip_id == AXP313B_CHIP_ID)
++    {
++        /*pmu type AXP1530*/
++        // pmu_axp1530_necessary_reg_enable();
++        printf("==== PMU: AXP1530 ====\n");
++        return 0;
++    }
++    else
++    {
++        printf("==== PMU: none ====\n");
++    }
++    return -1;
++}
++
++int pmu_axp1530_get_info(char *name, unsigned char *chipid)
++{
++    strncpy(name, "axp1530", sizeof("axp1530"));
++    *chipid = AXP1530_CHIP_ID;
++    return 0;
++}
++
++int pmu_axp1530_set_voltage(char *name, uint set_vol, uint onoff)
++{
++    u8 reg_value;
++    axp_contrl_info *p_item = NULL;
++    u8 base_step = 0;
++
++    p_item = get_ctrl_info_from_tbl(name);
++    if (!p_item)
++    {
++        return -1;
++    }
++
++    axp_info(
++        "name %s, min_vol %dmv, max_vol %d, cfg_reg 0x%x, cfg_mask 0x%x \
++		step0_val %d, split1_val %d, step1_val %d, ctrl_reg_addr 0x%x, ctrl_bit_ofs %d\n",
++        p_item->name, p_item->min_vol, p_item->max_vol,
++        p_item->cfg_reg_addr, p_item->cfg_reg_mask, p_item->step0_val,
++        p_item->split1_val, p_item->step1_val, p_item->ctrl_reg_addr,
++        p_item->ctrl_bit_ofs);
++
++    if ((set_vol > 0) && (p_item->min_vol))
++    {
++        if (set_vol < p_item->min_vol)
++        {
++            set_vol = p_item->min_vol;
++        }
++        else if (set_vol > p_item->max_vol)
++        {
++            set_vol = p_item->max_vol;
++        }
++        if (pmic_bus_read(p_item->cfg_reg_addr,
++                          &reg_value))
++        {
++            return -1;
++        }
++
++        reg_value &= ~p_item->cfg_reg_mask;
++        if (p_item->split2_val && (set_vol > p_item->split2_val))
++        {
++            base_step = (p_item->split2_val - p_item->split1_val) /
++                        p_item->step1_val;
++
++            base_step += (p_item->split1_val - p_item->min_vol) /
++                         p_item->step0_val;
++            reg_value |= (base_step +
++                          (set_vol - p_item->split2_val / p_item->step2_val * p_item->step2_val) /
++                              p_item->step2_val);
++        }
++        else if (p_item->split1_val &&
++                 (set_vol > p_item->split1_val))
++        {
++            if (p_item->split1_val < p_item->min_vol)
++            {
++                axp_err("bad split val(%d) for %s\n",
++                        p_item->split1_val, name);
++            }
++
++            base_step = (p_item->split1_val - p_item->min_vol) /
++                        p_item->step0_val;
++            reg_value |= (base_step +
++                          (set_vol - p_item->split1_val) /
++                              p_item->step1_val);
++        }
++        else
++        {
++            reg_value |=
++                (set_vol - p_item->min_vol) / p_item->step0_val;
++        }
++        if (pmic_bus_write(p_item->cfg_reg_addr, reg_value))
++        {
++            axp_err("unable to set %s\n", name);
++            return -1;
++        }
++    }
++
++    if (onoff < 0)
++    {
++        return 0;
++    }
++    if (pmic_bus_read(p_item->ctrl_reg_addr, &reg_value))
++    {
++        return -1;
++    }
++    if (onoff == 0)
++    {
++        reg_value &= ~(1 << p_item->ctrl_bit_ofs);
++    }
++    else
++    {
++        reg_value |= (1 << p_item->ctrl_bit_ofs);
++    }
++    if (pmic_bus_write(p_item->ctrl_reg_addr, reg_value))
++    {
++        axp_err("unable to onoff %s\n", name);
++        return -1;
++    }
++    return 0;
++}
++
++int pmu_axp1530_get_voltage(char *name)
++{
++    u8 reg_value;
++    axp_contrl_info *p_item = NULL;
++    u8 base_step;
++    int vol;
++
++    p_item = get_ctrl_info_from_tbl(name);
++    if (!p_item)
++    {
++        return -1;
++    }
++
++    if (pmic_bus_read(p_item->ctrl_reg_addr, &reg_value))
++    {
++        return -1;
++    }
++    if (!(reg_value & (0x01 << p_item->ctrl_bit_ofs)))
++    {
++        return 0;
++    }
++
++    if (pmic_bus_read(p_item->cfg_reg_addr, &reg_value))
++    {
++        return -1;
++    }
++    reg_value &= p_item->cfg_reg_mask;
++    if (p_item->split2_val)
++    {
++        u32 base_step2;
++        base_step = (p_item->split1_val - p_item->min_vol) /
++                    p_item->step0_val;
++
++        base_step2 = base_step + (p_item->split2_val - p_item->split1_val) /
++                                     p_item->step1_val;
++
++        if (reg_value >= base_step2)
++        {
++            vol = ALIGN(p_item->split2_val, p_item->step2_val) +
++                  p_item->step2_val * (reg_value - base_step2);
++        }
++        else if (reg_value >= base_step)
++        {
++            vol = p_item->split1_val +
++                  p_item->step1_val * (reg_value - base_step);
++        }
++        else
++        {
++            vol = p_item->min_vol + p_item->step0_val * reg_value;
++        }
++    }
++    else if (p_item->split1_val)
++    {
++        base_step = (p_item->split1_val - p_item->min_vol) /
++                    p_item->step0_val;
++        if (reg_value > base_step)
++        {
++            vol = p_item->split1_val +
++                  p_item->step1_val * (reg_value - base_step);
++        }
++        else
++        {
++            vol = p_item->min_vol + p_item->step0_val * reg_value;
++        }
++    }
++    else
++    {
++        vol = p_item->min_vol + p_item->step0_val * reg_value;
++    }
++    return vol;
++}
++
++int pmu_axp1530_set_power_off(void)
++{
++    u8 reg_value;
++    if (pmic_bus_read(AXP1530_POWER_DOMN_SEQUENCE, &reg_value))
++    {
++        return -1;
++    }
++    reg_value |= (1 << 7);
++    if (pmic_bus_write(AXP1530_POWER_DOMN_SEQUENCE, reg_value))
++    {
++        return -1;
++    }
++    return 0;
++}
++
++int pmu_axp1530_get_key_irq(void)
++{
++    u8 reg_value;
++    if (pmic_bus_read(AXP1530_IRQ_STATUS, &reg_value))
++    {
++        return -1;
++    }
++    reg_value &= (0x03 << 4);
++    if (reg_value)
++    {
++        if (pmic_bus_write(AXP1530_IRQ_STATUS, reg_value))
++        {
++            return -1;
++        }
++    }
++    return (reg_value >> 4) & 3;
++}
++
++unsigned char pmu_axp1530_get_reg_value(unsigned char reg_addr)
++{
++    u8 reg_value;
++    if (pmic_bus_read(reg_addr, &reg_value))
++    {
++        return -1;
++    }
++    return reg_value;
++}
++
++unsigned char pmu_axp1530_set_reg_value(unsigned char reg_addr, unsigned char reg_value)
++{
++    unsigned char reg;
++    if (pmic_bus_write(reg_addr, reg_value))
++    {
++        return -1;
++    }
++    if (pmic_bus_read(reg_addr, &reg))
++    {
++        return -1;
++    }
++    return reg;
++}
++
++// U_BOOT_AXP_PMU_INIT(pmu_axp1530) = {
++//     .pmu_name = "pmu_axp1530",
++//     .get_info = pmu_axp1530_get_info,
++//     .probe = axp_init,
++//     .set_voltage = pmu_axp1530_set_voltage,
++//     .get_voltage = pmu_axp1530_get_voltage,
++//     .set_power_off = pmu_axp1530_set_power_off,
++//     /*.set_sys_mode      = pmu_axp1530_set_sys_mode,*/
++//     /*.get_sys_mode      = pmu_axp1530_get_sys_mode,*/
++//     .get_key_irq = pmu_axp1530_get_key_irq,
++//     /*.set_bus_vol_limit = pmu_axp1530_set_bus_vol_limit,*/
++//     .get_reg_value = pmu_axp1530_get_reg_value,
++//     .set_reg_value = pmu_axp1530_set_reg_value,
++// };
+diff --git a/include/axp1530.h b/include/axp1530.h
+new file mode 100755
+index 00000000..24532655
+--- /dev/null
++++ b/include/axp1530.h
+@@ -0,0 +1,55 @@
++/*
++ * Copyright (C) 2016 Allwinner.
++ * weidonghui <weidonghui@allwinnertech.com>
++ *
++ * SUNXI AXP1530  Driver
++ *
++ * SPDX-License-Identifier: GPL-2.0+
++ */
++
++#ifndef __AXP1530_H__
++#define __AXP1530_H__
++
++//PMIC chip id reg03:bit7-6  bit3-
++#define   AXP1530_CHIP_ID              (0x48)
++#define   AXP313A_CHIP_ID              (0x4B)
++#define   AXP313B_CHIP_ID              (0x4C)
++
++#define AXP1530_DEVICE_ADDR			(0x3A3)
++#ifndef CONFIG_SYS_SUNXI_R_I2C0_SLAVE
++#define AXP1530_RUNTIME_ADDR			(0x2d)
++#else
++#ifndef CONFIG_AXP1530_SUNXI_I2C_SLAVE
++#define AXP1530_RUNTIME_ADDR			CONFIG_SYS_SUNXI_R_I2C0_SLAVE
++#else
++#define AXP1530_RUNTIME_ADDR                    CONFIG_AXP1530_SUNXI_I2C_SLAVE
++#endif
++#endif
++
++/* define AXP1530 REGISTER */
++#define	AXP1530_POWER_ON_SOURCE_INDIVATION			(0x00)
++#define	AXP1530_POWER_OFF_SOURCE_INDIVATION			(0x01)
++#define	AXP1530_VERSION								(0x03)
++#define	AXP1530_OUTPUT_POWER_ON_OFF_CTL				(0x10)
++#define AXP1530_DCDC_DVM_PWM_CTL					(0x12)
++#define	AXP1530_DC1OUT_VOL							(0x13)
++#define	AXP1530_DC2OUT_VOL          				(0x14)
++#define	AXP1530_DC3OUT_VOL          				(0x15)
++#define	AXP1530_ALDO1OUT_VOL						(0x16)
++#define	AXP1530_DLDO1OUT_VOL						(0x17)
++#define	AXP1530_POWER_DOMN_SEQUENCE					(0x1A)
++#define	AXP1530_PWROK_VOFF_SERT						(0x1B)
++#define AXP1530_POWER_WAKEUP_CTL					(0x1C)
++#define AXP1530_OUTPUT_MONITOR_CONTROL				(0x1D)
++#define	AXP1530_POK_SET								(0x1E)
++#define	AXP1530_IRQ_ENABLE							(0x20)
++#define	AXP1530_IRQ_STATUS							(0x21)
++#define AXP1530_WRITE_LOCK							(0x70)
++#define AXP1530_ERROR_MANAGEMENT					(0x71)
++#define	AXP1530_DCDC1_2_POWER_ON_DEFAULT_SET		(0x80)
++#define	AXP1530_DCDC3_ALDO1_POWER_ON_DEFAULT_SET	(0x81)
++
++
++#endif /* __AXP1530_REGS_H__ */
++
++
+diff --git a/include/axp_pmic.h b/include/axp_pmic.h
+index 545bce7c..d45b7682 100644
+--- a/include/axp_pmic.h
++++ b/include/axp_pmic.h
+@@ -21,6 +21,9 @@
+ #ifdef CONFIG_AXP806_POWER
+ #include <axp806.h>
+ #endif
++#ifdef CONFIG_AXP1530_POWER
++#include <axp1530.h>
++#endif
+ #ifdef CONFIG_AXP809_POWER
+ #include <axp809.h>
+ #endif
+@@ -44,4 +47,10 @@ int axp_set_sw(bool on);
+ int axp_init(void);
+ int axp_get_sid(unsigned int *sid);
+ 
++//----------------------------------------------------------------
++// axp1530
++
++int pmu_axp1530_set_voltage(char *name, unsigned int set_vol, unsigned int onoff);
++int pmu_axp1530_get_voltage(char *name);
++
+ #endif

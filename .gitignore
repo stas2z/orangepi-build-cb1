@@ -1,0 +1,43 @@
+#
+# NOTE! Don't add files that are generated in specific
+# subdirectories here. Add them in the ".gitignore" file
+# in that subdirectory instead.
+#
+# NOTE! Please use 'git ls-files -i --exclude-standard'
+# command after changing this file, to see if there are
+# any tracked files which get ignored after the change.
+#
+# Normal rules
+#
+
+*.bak
+*.swp
+*.tar.gz
+
+.tmp
+kernel
+output
+u-boot
+toolchains
+#userpatches
+
+mkimage.sh
+
+!external/patch/u-boot
+!external/patch/kernel
+!external/config/kernel
+
+external/cache/.gpg
+external/cache/hash
+external/cache/rootfs
+external/cache/sources/extra
+external/cache/sources/evalcache
+external/cache/sources/oh-my-zsh
+external/cache/sources/sunxi-tools
+external/cache/sources/rkbin-tools
+external/cache/sources/orangepi-test
+external/cache/sources/rk-rootfs-build*
+external/cache/sources/orangepi-firmware*
+external/cache/sources/ffmpeg_kodi*
+external/cache/sources/rk3399_gst_xserver_libs
+external/cache/sources/arm-trusted-firmware-sunxi-mainline
