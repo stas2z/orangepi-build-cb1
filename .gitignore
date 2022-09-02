@@ -15,10 +15,10 @@
 *.tar.gz
 
 .tmp
-kernel
-output
-u-boot
-toolchains
+/kernel
+/output
+/u-boot
+/toolchains
 #userpatches
 
 mkimage.sh

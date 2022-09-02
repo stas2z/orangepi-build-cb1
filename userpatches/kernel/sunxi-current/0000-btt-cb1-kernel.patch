@@ -1,0 +1,982 @@
+diff --git a/arch/arm64/boot/dts/allwinner/Makefile b/arch/arm64/boot/dts/allwinner/Makefile
+index 1942d05fa..b527f6cd5 100644
+--- a/arch/arm64/boot/dts/allwinner/Makefile
++++ b/arch/arm64/boot/dts/allwinner/Makefile
+@@ -11,5 +11,6 @@ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-orangepi-one-plus.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h616-orangepi-zero2.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h616-orangepi-zero2-lts.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h616-orangepi-zero2-b.dtb
++dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h616-btt-cb1.dtb
+ 
+ subdir-y	:= $(dts-dirs) overlay
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h616-btt-cb1.dts b/arch/arm64/boot/dts/allwinner/sun50i-h616-btt-cb1.dts
+new file mode 100644
+index 000000000..4001802af
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/sun50i-h616-btt-cb1.dts
+@@ -0,0 +1,381 @@
++// SPDX-License-Identifier: (GPL-2.0+ or MIT)
++/*
++ * Copyright (C) 2020 Arm Ltd.
++ */
++
++/dts-v1/;
++
++#include "sun50i-h616.dtsi"
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/arm-gic.h>
++#include <dt-bindings/leds/common.h>
++#include "sun50i-h616-cpu-opp.dtsi"
++
++/ {
++	model = "BTT CB1";
++	compatible = "allwinner,sun50i-h616";
++
++	aliases {
++		ethernet0 = &emac0;
++		serial0 = &uart0;
++	};
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++
++	connector {
++		compatible = "hdmi-connector";
++		type = "d";
++
++		port {
++			hdmi_con_in: endpoint {
++				remote-endpoint = <&hdmi_out_con>;
++			};
++		};
++	};
++
++	leds {
++		compatible = "gpio-leds";
++        
++		led-0 {
++			function = LED_FUNCTION_POWER;
++			color = <LED_COLOR_ID_RED>;
++            gpio = <&pio 7 5 GPIO_ACTIVE_HIGH>; /* PH5 */
++            status = "okay";
++		};
++
++		led-1 {
++			function = LED_FUNCTION_STATUS;
++			color = <LED_COLOR_ID_GREEN>;
++			gpios = <&pio 2 13 GPIO_ACTIVE_HIGH>; /* PC13 */
++			default-state = "on";
++            status = "disabled";
++		};
++
++        gpio_1 {
++			function = "wifi_power";
++            gpio = <&pio 5 6 GPIO_ACTIVE_LOW>; /* PF6 */
++            status = "okay";
++		};
++
++        gpio_2 {
++			function = "wifi_wake";
++            gpio = <&pio 6 15 GPIO_ACTIVE_LOW>; /* PG15 */
++            status = "okay";
++		};
++	};
++
++	reg_vcc5v: vcc5v {
++		/* board wide 5V supply directly from the USB-C socket */
++		compatible = "regulator-fixed";
++		regulator-name = "vcc-5v";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		regulator-always-on;
++	};
++
++	reg_usb1_vbus: usb1-vbus {
++		compatible = "regulator-fixed";
++		regulator-name = "usb1-vbus";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		vin-supply = <&reg_vcc5v>;
++		enable-active-high;
++		gpio = <&pio 2 16 GPIO_ACTIVE_HIGH>;    /* PC16 */
++		status = "okay";
++	};
++
++	reg_vcc33_wifi: vcc33-wifi {
++		/* Always on 3.3V regulator for WiFi and BT */
++		compatible = "regulator-fixed";
++		regulator-name = "vcc33-wifi";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		regulator-always-on;
++		vin-supply = <&reg_vcc5v>;
++	};
++
++	reg_vcc_wifi_io: vcc-wifi-io {
++		/* Always on 1.8V/300mA regulator for WiFi and BT IO */
++		compatible = "regulator-fixed";
++		regulator-name = "vcc-wifi-io";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++		regulator-always-on;
++		vin-supply = <&reg_vcc33_wifi>;
++	};
++
++	wifi_pwrseq: wifi-pwrseq {
++		compatible = "mmc-pwrseq-simple";
++		clocks = <&rtc 1>;
++		clock-names = "osc32k-out";
++		reset-gpios = <&pio 6 18 GPIO_ACTIVE_LOW>;  /* PG18 */
++		post-power-on-delay-ms = <200>;
++	};
++};
++
++&usbphy {
++	usb1_vbus-supply = <&reg_usb1_vbus>;
++	status = "okay";
++};
++
++&de {
++	status = "okay";
++};
++
++&ehci0 {
++	status = "okay";
++};
++
++&ehci1 {
++	status = "okay";
++};
++
++&ehci2 {
++	status = "okay";
++};
++
++&ehci3 {
++	status = "okay";
++};
++
++&gpu {
++    mali-supply = <&reg_dcdc3>;
++    status = "disabled";
++};
++
++&hdmi {
++	hvcc-supply = <&reg_aldo1>;
++	status = "okay";
++};
++
++&hdmi_out {
++	hdmi_out_con: endpoint {
++		remote-endpoint = <&hdmi_con_in>;
++	};
++};
++
++/* USB 2 & 3 are on headers only. */
++
++&emac0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&ext_rgmii_pins>;
++	phy-mode = "rgmii";
++	phy-handle = <&ext_rgmii_phy>;
++    phy-supply = <&reg_dldo1>;
++	allwinner,rx-delay-ps = <3100>;
++	allwinner,tx-delay-ps = <700>;
++	status = "okay";
++};
++
++&mdio0 {
++	ext_rgmii_phy: ethernet-phy@1 {
++		compatible = "ethernet-phy-ieee802.3-c22";
++		reg = <1>;
++	};
++};
++
++/*------------------------------------*/
++
++&mmc0 {
++    vmmc-supply = <&reg_dldo1>;
++
++	// cd-gpios = <&pio 5 6 GPIO_ACTIVE_LOW>;	/* PF6 */
++    no-1-8-v;
++	bus-width = <4>;
++	status = "okay";
++};
++
++&mmc1 {
++	vmmc-supply = <&reg_vcc33_wifi>;
++	vqmmc-supply = <&reg_vcc_wifi_io>;
++	mmc-pwrseq = <&wifi_pwrseq>;
++	bus-width = <4>;
++	non-removable;
++	mmc-ddr-1_8v;
++	status = "okay";
++};
++
++&ohci0 {
++	status = "okay";
++};
++
++&ohci1 {
++	status = "okay";
++};
++
++&ohci2 {
++	status = "okay";
++};
++
++&ohci3 {
++	status = "okay";
++};
++
++&r_i2c {
++	status = "okay";
++
++    axp1530: pmic@36 {
++		compatible = "x-powers,axp1530";
++        status = "okay";
++		reg = <0x36>;
++		wakeup-source;
++
++		standby_param: standby_param {
++			vcc-dram = <0x4>;
++		};
++
++		regulators{
++			reg_dcdc1: dcdc1 {
++				regulator-name = "axp1530-dcdc1";
++				regulator-min-microvolt = <500000>;
++				regulator-max-microvolt = <3400000>;
++				regulator-step-delay-us = <25>;
++				regulator-final-delay-us = <50>;
++				regulator-always-on;
++			};
++
++			reg_dcdc2: dcdc2 {
++				regulator-name = "axp1530-dcdc2";
++				regulator-min-microvolt = <500000>;
++				regulator-max-microvolt = <1540000>;
++				regulator-step-delay-us = <25>;
++				regulator-final-delay-us = <50>;
++				regulator-ramp-delay = <200>; // FIXME
++				regulator-always-on;
++			};
++
++			reg_dcdc3: dcdc3 {
++				regulator-name = "axp1530-dcdc3";
++				regulator-min-microvolt = <500000>;
++				regulator-max-microvolt = <1840000>;
++				regulator-step-delay-us = <25>;
++				regulator-final-delay-us = <50>;
++				regulator-always-on;
++			};
++
++			reg_aldo1: ldo1 {
++				regulator-name = "axp1530-aldo1";
++				regulator-min-microvolt = <1800000>;
++				regulator-max-microvolt = <1800000>;
++				regulator-step-delay-us = <25>;
++				regulator-final-delay-us = <50>;
++				regulator-always-on;
++			};
++
++			reg_dldo1: ldo2 {
++				regulator-name = "axp1530-dldo1";
++				regulator-min-microvolt = <3300000>;
++				regulator-max-microvolt = <3300000>;
++				regulator-step-delay-us = <25>;
++				regulator-final-delay-us = <50>;
++				regulator-always-on;
++			};
++		};
++	};
++};
++
++&cpu0 {
++    cpu-supply = <&reg_dcdc2>;
++};
++
++&spi0  {
++	status = "disabled";
++
++	flash@0 {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		compatible = "jedec,spi-nor";
++		reg = <0>;
++		spi-max-frequency = <40000000>;
++	};
++};
++
++&spi1 {
++	#address-cells = <1>;
++	#size-cells = <0>;
++	status = "disabled";
++
++	spidev@1 {
++		compatible = "rohm,dh2228fv";
++		status = "disabled";
++		reg = <1>;
++		spi-max-frequency = <1000000>;
++	};
++};
++
++&uart0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart0_ph_pins>;
++	status = "okay";
++};
++
++&usbotg {
++	/*
++	 * PHY0 pins are connected to a USB-C socket, but a role switch
++	 * is not implemented: both CC pins are pulled to GND.
++	 * The VBUS pins power the device, so a fixed peripheral mode
++	 * is the best choice.
++	 * The board can be powered via GPIOs, in this case port0 *can*
++	 * act as a host (with a cable/adapter ignoring CC), as VBUS is
++	 * then provided by the GPIOs. Any user of this setup would
++	 * need to adjust the DT accordingly: dr_mode set to "host",
++	 * enabling OHCI0 and EHCI0.
++	 */
++	dr_mode = "peripheral";
++	status = "okay";
++};
++
++&i2c1 {
++	status = "disabled";
++};
++
++&i2c2 {
++	status = "disabled";
++};
++
++&i2c3 {
++	status = "disabled";
++};
++
++&i2c4 {
++	status = "disabled";
++};
++
++&ir {
++	pinctrl-names = "default";
++	pinctrl-0 = <&ir_rx_pin>;
++	status = "okay";
++};
++
++&codec {
++    allwinner,audio-routing =
++        "Line Out", "LINEOUT";
++    status = "okay";
++};
++
++&ahub_codec {
++	status = "okay";
++};
++
++&ahub_cpudai0 {
++	status = "okay";
++};
++
++&ahub_cpudai1 {
++	status = "okay";
++};
++
++&ahub_cpudai2 {
++	status = "okay";
++};
++
++&sndahub {
++	status = "okay";
++};
++
++&ahub_i2s1 {
++	status = "okay";
++};
+diff --git a/drivers/mfd/Makefile b/drivers/mfd/Makefile
+index f6055a7fe..b00679f31 100644
+--- a/drivers/mfd/Makefile
++++ b/drivers/mfd/Makefile
+@@ -141,7 +141,7 @@ obj-$(CONFIG_MFD_DA9052_SPI)	+= da9052-spi.o
+ obj-$(CONFIG_MFD_DA9052_I2C)	+= da9052-i2c.o
+ 
+ obj-$(CONFIG_MFD_AC100)		+= ac100.o
+-obj-$(CONFIG_MFD_AC200)		+= sunxi-ac200.o
++obj-$(CONFIG_MFD_AC200)		+= ac200.o
+ obj-$(CONFIG_MFD_AXP20X)	+= axp20x.o
+ obj-$(CONFIG_MFD_AXP20X_I2C)	+= axp20x-i2c.o
+ obj-$(CONFIG_MFD_AXP20X_RSB)	+= axp20x-rsb.o
+diff --git a/drivers/mfd/ac200.c b/drivers/mfd/ac200.c
+new file mode 100755
+index 000000000..6ac75ed6d
+--- /dev/null
++++ b/drivers/mfd/ac200.c
+@@ -0,0 +1,198 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * MFD core driver for X-Powers' AC200 IC
++ *
++ * The AC200 is a chip which is co-packaged with Allwinner H6 SoC and
++ * includes analog audio codec, analog TV encoder, ethernet PHY, eFuse
++ * and RTC.
++ *
++ * Copyright (c) 2020 Jernej Skrabec <jernej.skrabec@siol.net>
++ */
++
++#include <linux/i2c.h>
++#include <linux/interrupt.h>
++#include <linux/kernel.h>
++#include <linux/mfd/core.h>
++#include <linux/mfd/ac200.h>
++#include <linux/module.h>
++#include <linux/of.h>
++
++/* Interrupts */
++#define AC200_IRQ_RTC 0
++#define AC200_IRQ_EPHY 1
++#define AC200_IRQ_TVE 2
++
++/* IRQ enable register */
++#define AC200_SYS_IRQ_ENABLE_OUT_EN BIT(15)
++#define AC200_SYS_IRQ_ENABLE_RTC BIT(12)
++#define AC200_SYS_IRQ_ENABLE_EPHY BIT(8)
++#define AC200_SYS_IRQ_ENABLE_TVE BIT(4)
++
++static const struct regmap_range_cfg ac200_range_cfg[] = {
++    {
++        .range_min = AC200_SYS_VERSION,
++        .range_max = AC200_IC_CHARA1,
++        .selector_reg = AC200_TWI_REG_ADDR_H,
++        .selector_mask = 0xff,
++        .selector_shift = 0,
++        .window_start = 0,
++        .window_len = 256,
++    }};
++
++static const struct regmap_config ac200_regmap_config = {
++    .name = "ac200",
++    .reg_bits = 8,
++    .val_bits = 16,
++    .ranges = ac200_range_cfg,
++    .num_ranges = ARRAY_SIZE(ac200_range_cfg),
++    .max_register = AC200_IC_CHARA1,
++};
++
++static const struct regmap_irq ac200_regmap_irqs[] = {
++    REGMAP_IRQ_REG(AC200_IRQ_RTC, 0, AC200_SYS_IRQ_ENABLE_RTC),
++    REGMAP_IRQ_REG(AC200_IRQ_EPHY, 0, AC200_SYS_IRQ_ENABLE_EPHY),
++    REGMAP_IRQ_REG(AC200_IRQ_TVE, 0, AC200_SYS_IRQ_ENABLE_TVE),
++};
++
++static const struct regmap_irq_chip ac200_regmap_irq_chip = {
++    .name = "ac200_irq_chip",
++    .status_base = AC200_SYS_IRQ_STATUS,
++    .mask_base = AC200_SYS_IRQ_ENABLE,
++    .mask_invert = true,
++    .irqs = ac200_regmap_irqs,
++    .num_irqs = ARRAY_SIZE(ac200_regmap_irqs),
++    .num_regs = 1,
++};
++
++static const struct resource ephy_resource[] = {
++    DEFINE_RES_IRQ(AC200_IRQ_EPHY),
++};
++
++static const struct mfd_cell ac200_cells[] = {
++    {
++        .name = "ac200-ephy",
++        .num_resources = ARRAY_SIZE(ephy_resource),
++        .resources = ephy_resource,
++        .of_compatible = "x-powers,ac200-ephy",
++    },
++    {
++        .name = "acx00-codec",
++        .of_compatible = "x-powers,ac200-codec",
++    },
++};
++
++static int ac200_i2c_probe(struct i2c_client *i2c,
++                           const struct i2c_device_id *id)
++{
++    struct device *dev = &i2c->dev;
++    struct ac200_dev *ac200;
++    int ret;
++
++    ac200 = devm_kzalloc(dev, sizeof(*ac200), GFP_KERNEL);
++    if (!ac200)
++        return -ENOMEM;
++
++    i2c_set_clientdata(i2c, ac200);
++
++    ac200->regmap = devm_regmap_init_i2c(i2c, &ac200_regmap_config);
++    if (IS_ERR(ac200->regmap))
++    {
++        ret = PTR_ERR(ac200->regmap);
++        dev_err(dev, "regmap init failed: %d\n", ret);
++        return ret;
++    }
++
++    ac200->clk = devm_clk_get(dev, NULL);
++    if (IS_ERR(ac200->clk))
++    {
++        dev_err(dev, "Can't obtain the clock!\n");
++        return PTR_ERR(ac200->clk);
++    }
++
++    ret = clk_prepare_enable(ac200->clk);
++    if (ret)
++    {
++        dev_err(dev, "rclk_prepare_enable failed! \n");
++        return ret;
++    }
++
++    /* do a reset to put chip in a known state */
++    ret = regmap_write(ac200->regmap, AC200_SYS_CONTROL, 0);
++    if (ret)
++    {
++        dev_err(dev, "AC200_SYS_CONTROL 0 failed! \n");
++        return ret;
++    }
++
++    ret = regmap_write(ac200->regmap, AC200_SYS_CONTROL, 1);
++    if (ret)
++    {
++        dev_err(dev, "AC200_SYS_CONTROL 1 failed! \n");
++        return ret;
++    }
++    /* enable interrupt pin */
++
++    ret = regmap_write(ac200->regmap, AC200_SYS_IRQ_ENABLE,
++                       AC200_SYS_IRQ_ENABLE_OUT_EN);
++    if (ret)
++        return ret;
++
++    ret = regmap_add_irq_chip(ac200->regmap, i2c->irq, IRQF_ONESHOT, 0,
++                              &ac200_regmap_irq_chip, &ac200->regmap_irqc);
++    if (ret)
++        return ret;
++
++    ret = devm_mfd_add_devices(dev, PLATFORM_DEVID_NONE, ac200_cells,
++                               ARRAY_SIZE(ac200_cells), NULL, 0, NULL);
++    if (ret)
++    {
++        dev_err(dev, "failed to add MFD devices: %d\n", ret);
++        regmap_del_irq_chip(i2c->irq, ac200->regmap_irqc);
++        return ret;
++    }
++    else
++    {
++        dev_err(dev, "add MFD devices success! \n");
++    }
++
++    return 0;
++}
++
++static int ac200_i2c_remove(struct i2c_client *i2c)
++{
++    struct ac200_dev *ac200 = i2c_get_clientdata(i2c);
++
++    regmap_write(ac200->regmap, AC200_SYS_CONTROL, 0);
++
++    mfd_remove_devices(&i2c->dev);
++    regmap_del_irq_chip(i2c->irq, ac200->regmap_irqc);
++
++    return 0;
++}
++
++static const struct i2c_device_id ac200_ids[] = {
++    {
++        "ac200",
++    },
++    {/* sentinel */}};
++MODULE_DEVICE_TABLE(i2c, ac200_ids);
++
++static const struct of_device_id ac200_of_match[] = {
++    {.compatible = "x-powers,ac200"},
++    {/* sentinel */}};
++MODULE_DEVICE_TABLE(of, ac200_of_match);
++
++static struct i2c_driver ac200_i2c_driver = {
++    .driver = {
++        .name = "ac200",
++        .of_match_table = of_match_ptr(ac200_of_match),
++    },
++    .probe = ac200_i2c_probe,
++    .remove = ac200_i2c_remove,
++    .id_table = ac200_ids,
++};
++module_i2c_driver(ac200_i2c_driver);
++
++MODULE_DESCRIPTION("MFD core driver for AC200");
++MODULE_AUTHOR("Jernej Skrabec <jernej.skrabec@siol.net>");
++MODULE_LICENSE("GPL v2");
+diff --git a/drivers/mfd/axp20x-i2c.c b/drivers/mfd/axp20x-i2c.c
+index 00ab48018..3ad7a8cfa 100644
+--- a/drivers/mfd/axp20x-i2c.c
++++ b/drivers/mfd/axp20x-i2c.c
+@@ -68,6 +68,7 @@ static const struct of_device_id axp20x_i2c_of_match[] = {
+ 	{ .compatible = "x-powers,axp223", .data = (void *)AXP223_ID },
+ 	{ .compatible = "x-powers,axp803", .data = (void *)AXP803_ID },
+ 	{ .compatible = "x-powers,axp806", .data = (void *)AXP806_ID },
++    {.compatible = "x-powers,axp1530", .data = (void *)AXP1530_ID},
+ 	{ },
+ };
+ MODULE_DEVICE_TABLE(of, axp20x_i2c_of_match);
+@@ -81,6 +82,7 @@ static const struct i2c_device_id axp20x_i2c_id[] = {
+ 	{ "axp223", 0 },
+ 	{ "axp803", 0 },
+ 	{ "axp806", 0 },
++    {"axp1530", 0},
+ 	{ },
+ };
+ MODULE_DEVICE_TABLE(i2c, axp20x_i2c_id);
+diff --git a/drivers/mfd/axp20x-rsb.c b/drivers/mfd/axp20x-rsb.c
+index 214bc0d84..abd286113 100644
+--- a/drivers/mfd/axp20x-rsb.c
++++ b/drivers/mfd/axp20x-rsb.c
+@@ -60,6 +60,7 @@ static const struct of_device_id axp20x_rsb_of_match[] = {
+ 	{ .compatible = "x-powers,axp223", .data = (void *)AXP223_ID },
+ 	{ .compatible = "x-powers,axp803", .data = (void *)AXP803_ID },
+ 	{ .compatible = "x-powers,axp806", .data = (void *)AXP806_ID },
++    {.compatible = "x-powers,axp1530", .data = (void *)AXP1530_ID},
+ 	{ .compatible = "x-powers,axp809", .data = (void *)AXP809_ID },
+ 	{ .compatible = "x-powers,axp813", .data = (void *)AXP813_ID },
+ 	{ },
+diff --git a/drivers/mfd/axp20x.c b/drivers/mfd/axp20x.c
+index 1cff27b92..b8d1bb39a 100644
+--- a/drivers/mfd/axp20x.c
++++ b/drivers/mfd/axp20x.c
+@@ -41,6 +41,7 @@ static const char * const axp20x_model_names[] = {
+ 	"AXP288",
+ 	"AXP803",
+ 	"AXP806",
++    "AXP1530",
+ 	"AXP809",
+ 	"AXP813",
+ };
+@@ -169,6 +170,26 @@ static const struct regmap_access_table axp806_volatile_table = {
+ 	.n_yes_ranges	= ARRAY_SIZE(axp806_volatile_ranges),
+ };
+ 
++/***********************/
++static const struct regmap_range axp1530_writeable_ranges[] = {
++    regmap_reg_range(AXP1530_ON_INDICATE, AXP1530_FREQUENCY),
++};
++
++static const struct regmap_range axp1530_volatile_ranges[] = {
++    regmap_reg_range(AXP1530_ON_INDICATE, AXP1530_FREQUENCY),
++};
++
++static const struct regmap_access_table axp1530_writeable_table = {
++    .yes_ranges = axp1530_writeable_ranges,
++    .n_yes_ranges = ARRAY_SIZE(axp1530_writeable_ranges),
++};
++
++static const struct regmap_access_table axp1530_volatile_table = {
++    .yes_ranges = axp1530_volatile_ranges,
++    .n_yes_ranges = ARRAY_SIZE(axp1530_volatile_ranges),
++};
++/***********************/
++
+ static const struct resource axp152_pek_resources[] = {
+ 	DEFINE_RES_IRQ_NAMED(AXP152_IRQ_PEK_RIS_EDGE, "PEK_DBR"),
+ 	DEFINE_RES_IRQ_NAMED(AXP152_IRQ_PEK_FAL_EDGE, "PEK_DBF"),
+@@ -262,6 +283,11 @@ static const struct resource axp806_pek_resources[] = {
+ 	DEFINE_RES_IRQ_NAMED(AXP806_IRQ_POK_FALL, "PEK_DBF"),
+ };
+ 
++static struct resource axp1530_pek_resources[] = {
++    DEFINE_RES_IRQ_NAMED(AXP1530_IRQ_KEY_L2H_EN, "PEK_DBR"),
++    DEFINE_RES_IRQ_NAMED(AXP1530_IRQ_KEY_H2L_EN, "PEK_DBF"),
++};
++
+ static const struct resource axp809_pek_resources[] = {
+ 	DEFINE_RES_IRQ_NAMED(AXP809_IRQ_PEK_RIS_EDGE, "PEK_DBR"),
+ 	DEFINE_RES_IRQ_NAMED(AXP809_IRQ_PEK_FAL_EDGE, "PEK_DBF"),
+@@ -312,6 +338,17 @@ static const struct regmap_config axp806_regmap_config = {
+ 	.cache_type	= REGCACHE_RBTREE,
+ };
+ 
++/******************************/
++static const struct regmap_config axp1530_regmap_config = {
++    .reg_bits = 8,
++    .val_bits = 8,
++    .wr_table = &axp1530_writeable_table,
++    .volatile_table = &axp1530_volatile_table,
++    .max_register = AXP1530_FREQUENCY,
++    .cache_type = REGCACHE_RBTREE,
++};
++/******************************/
++
+ #define INIT_REGMAP_IRQ(_variant, _irq, _off, _mask)			\
+ 	[_variant##_IRQ_##_irq] = { .reg_offset = (_off), .mask = BIT(_mask) }
+ 
+@@ -498,6 +535,16 @@ static const struct regmap_irq axp806_regmap_irqs[] = {
+ 	INIT_REGMAP_IRQ(AXP806, POK_RISE,		1, 6),
+ };
+ 
++static const struct regmap_irq axp1530_regmap_irqs[] = {
++    INIT_REGMAP_IRQ(AXP1530, KEY_L2H_EN, 0, 7),
++    INIT_REGMAP_IRQ(AXP1530, KEY_H2L_EN, 0, 6),
++    INIT_REGMAP_IRQ(AXP1530, POKSIRQ_EN, 0, 5),
++    INIT_REGMAP_IRQ(AXP1530, POKLIRQ_EN, 0, 4),
++    INIT_REGMAP_IRQ(AXP1530, DCDC3_UNDER, 0, 3),
++    INIT_REGMAP_IRQ(AXP1530, DCDC2_UNDER, 0, 2),
++    INIT_REGMAP_IRQ(AXP1530, TEMP_OVER, 0, 0),
++};
++
+ static const struct regmap_irq axp809_regmap_irqs[] = {
+ 	INIT_REGMAP_IRQ(AXP809, ACIN_OVER_V,		0, 7),
+ 	INIT_REGMAP_IRQ(AXP809, ACIN_PLUGIN,		0, 6),
+@@ -607,6 +654,18 @@ static const struct regmap_irq_chip axp806_regmap_irq_chip = {
+ 	.num_regs		= 2,
+ };
+ 
++static const struct regmap_irq_chip axp1530_regmap_irq_chip = {
++    .name = "axp1530_irq_chip",
++    .status_base = AXP1530_IRQ_STATUS1,
++    .ack_base = AXP1530_IRQ_STATUS1,
++    .mask_base = AXP1530_IRQ_ENABLE1,
++    .mask_invert = true,
++    .init_ack_masked = true,
++    .irqs = axp1530_regmap_irqs,
++    .num_irqs = ARRAY_SIZE(axp1530_regmap_irqs),
++    .num_regs = 1,
++};
++
+ static const struct regmap_irq_chip axp809_regmap_irq_chip = {
+ 	.name			= "axp809",
+ 	.status_base		= AXP20X_IRQ1_STATE,
+@@ -822,6 +881,66 @@ static const struct mfd_cell axp806_cells[] = {
+ 	},
+ };
+ 
++#define AXP1530_DCDC1 "dcdc1"
++#define AXP1530_DCDC2 "dcdc2"
++#define AXP1530_DCDC3 "dcdc3"
++#define AXP1530_ALDO1 "aldo1"
++#define AXP1530_DLDO1 "dldo1"
++
++static struct mfd_cell axp1530_cells[] = {
++    // 	{
++    // 		.name		= "axp1530-gpio",
++    // 		.of_compatible	= "x-powers,axp1530-gpio",
++    // /*		.num_resources = ARRAY_SIZE(axp1530_gpio_resources),
++    // 		.resources = axp1530_gpio_resources,*/
++    // 	},
++    // 	{
++    // 		.name = "axp221-pek",
++    // 		.num_resources = ARRAY_SIZE(axp1530_pek_resources),
++    // 		.resources = axp1530_pek_resources,
++    // 		.of_compatible = "x-powers,axp2101-pek",
++    // 	},
++    // {
++    // 	/* match drivers/regulator/axp2101.c */
++    // 	.name = "axp2101-regulator",
++    // },
++    {
++        .of_compatible = "xpower-vregulator,dcdc1",
++        .name = "axp20x-regulator",
++        .id = 1,
++        .platform_data = AXP1530_DCDC1,
++        .pdata_size = sizeof(AXP1530_DCDC1),
++    },
++    {
++        .of_compatible = "xpower-vregulator,dcdc2",
++        .name = "axp20x-regulator",
++        .id = 2,
++        .platform_data = AXP1530_DCDC2,
++        .pdata_size = sizeof(AXP1530_DCDC2),
++    },
++    {
++        .of_compatible = "xpower-vregulator,dcdc3",
++        .name = "axp20x-regulator",
++        .id = 3,
++        .platform_data = AXP1530_DCDC3,
++        .pdata_size = sizeof(AXP1530_DCDC3),
++    },
++    {
++        .of_compatible = "xpower-vregulator,aldo1",
++        .name = "axp20x-regulator",
++        .id = 4,
++        .platform_data = AXP1530_ALDO1,
++        .pdata_size = sizeof(AXP1530_ALDO1),
++    },
++    {
++        .of_compatible = "xpower-vregulator,dldo1",
++        .name = "axp20x-regulator",
++        .id = 5,
++        .platform_data = AXP1530_DLDO1,
++        .pdata_size = sizeof(AXP1530_DLDO1),
++    },
++};
++
+ static const struct mfd_cell axp809_cells[] = {
+ 	{
+ 		.name		= "axp221-pek",
+@@ -1563,6 +1682,12 @@ int axp20x_match_device(struct axp20x_dev *axp20x)
+ 		axp20x->regmap_cfg = &axp806_regmap_config;
+ 		axp20x->regmap_irq_chip = &axp806_regmap_irq_chip;
+ 		break;
++    case AXP1530_ID:
++        axp20x->nr_cells = ARRAY_SIZE(axp1530_cells);
++        axp20x->cells = axp1530_cells;
++        axp20x->regmap_cfg = &axp1530_regmap_config;
++        axp20x->regmap_irq_chip = &axp1530_regmap_irq_chip;
++        break;
+ 	case AXP809_ID:
+ 		axp20x->nr_cells = ARRAY_SIZE(axp809_cells);
+ 		axp20x->cells = axp809_cells;
+diff --git a/drivers/net/wireless/rtl8189fs/Makefile b/drivers/net/wireless/rtl8189fs/Makefile
+index 9566b4839..422090b7f 100644
+--- a/drivers/net/wireless/rtl8189fs/Makefile
++++ b/drivers/net/wireless/rtl8189fs/Makefile
+@@ -51,7 +51,7 @@ CONFIG_SDIO_HCI = y
+ CONFIG_GSPI_HCI = n
+ ########################## Features ###########################
+ CONFIG_MP_INCLUDED = y
+-CONFIG_POWER_SAVING = y
++CONFIG_POWER_SAVING = n
+ CONFIG_USB_AUTOSUSPEND = n
+ CONFIG_HW_PWRP_DETECTION = n
+ CONFIG_WIFI_TEST = n
+diff --git a/drivers/regulator/axp20x-regulator.c b/drivers/regulator/axp20x-regulator.c
+index 645edd9de..f15391bdc 100644
+--- a/drivers/regulator/axp20x-regulator.c
++++ b/drivers/regulator/axp20x-regulator.c
+@@ -837,6 +837,35 @@ static const struct regulator_desc axp806_regulators[] = {
+ 		    AXP806_PWR_OUT_CTRL2, AXP806_PWR_OUT_SW_MASK),
+ };
+ 
++static const struct linear_range axp1530_dcdc1_ranges[] = {
++    REGULATOR_LINEAR_RANGE(500000, 0x0, 0x46, 10000),
++    REGULATOR_LINEAR_RANGE(1220000, 0x47, 0x57, 20000),
++    REGULATOR_LINEAR_RANGE(1600000, 0x58, 0x6A, 100000),
++};
++
++static const struct linear_range axp1530_dcdc2_ranges[] = {
++    REGULATOR_LINEAR_RANGE(500000, 0x0, 0x46, 10000),
++    REGULATOR_LINEAR_RANGE(1220000, 0x47, 0x57, 20000),
++};
++
++static const struct linear_range axp1530_dcdc3_ranges[] = {
++    REGULATOR_LINEAR_RANGE(500000, 0x0, 0x46, 10000),
++    REGULATOR_LINEAR_RANGE(1220000, 0x47, 0x66, 20000),
++};
++
++static const struct regulator_desc axp1530_regulators[] = {
++    AXP_DESC_RANGES(AXP1530, DCDC1, "dcdc1", "vin1", axp1530_dcdc1_ranges,
++                    0x6B, AXP1530_DCDC1_CONRTOL, 0x7f, AXP1530_OUTPUT_CONTROL, BIT(0)),
++    AXP_DESC_RANGES(AXP1530, DCDC2, "dcdc2", "vin2", axp1530_dcdc2_ranges,
++                    0x58, AXP1530_DCDC2_CONRTOL, 0x7f, AXP1530_OUTPUT_CONTROL, BIT(1)),
++    AXP_DESC_RANGES(AXP1530, DCDC3, "dcdc3", "vin3", axp1530_dcdc3_ranges,
++                    0x58, AXP1530_DCDC3_CONRTOL, 0x7f, AXP1530_OUTPUT_CONTROL, BIT(2)),
++    AXP_DESC(AXP1530, LDO1, "ldo1", "ldo1in", 500, 3500, 100,
++             AXP1530_ALDO1_CONRTOL, 0x1f, AXP1530_OUTPUT_CONTROL, BIT(3)),
++    AXP_DESC(AXP1530, LDO2, "ldo2", "ldo2in", 500, 3500, 100,
++             AXP1530_DLDO1_CONRTOL, 0x1f, AXP1530_OUTPUT_CONTROL, BIT(4)),
++};
++
+ static const struct linear_range axp809_dcdc4_ranges[] = {
+ 	REGULATOR_LINEAR_RANGE(600000,
+ 			       AXP809_DCDC4_600mV_START,
+@@ -1244,6 +1273,10 @@ static int axp20x_regulator_probe(struct platform_device *pdev)
+ 		regulators = axp806_regulators;
+ 		nregulators = AXP806_REG_ID_MAX;
+ 		break;
++    case AXP1530_ID:
++        regulators = axp1530_regulators;
++        nregulators = AXP1530_REG_ID_MAX;
++        break;
+ 	case AXP809_ID:
+ 		regulators = axp809_regulators;
+ 		nregulators = AXP809_REG_ID_MAX;
+diff --git a/include/linux/mfd/axp20x.h b/include/linux/mfd/axp20x.h
+index 6b01f3e48..33c97382a 100644
+--- a/include/linux/mfd/axp20x.h
++++ b/include/linux/mfd/axp20x.h
+@@ -19,6 +19,7 @@ enum axp20x_variants {
+ 	AXP288_ID,
+ 	AXP803_ID,
+ 	AXP806_ID,
++        AXP1530_ID,
+ 	AXP809_ID,
+ 	AXP813_ID,
+ 	NR_AXP20X_VARIANTS,
+@@ -117,6 +118,35 @@ enum axp20x_variants {
+ #define AXP806_BUS_ADDR_EXT		0xfe
+ #define AXP806_REG_ADDR_EXT		0xff
+ 
++/* For AXP1530 */
++#define AXP1530_ON_INDICATE (0x00)
++#define AXP1530_OFF_INDICATE (0x01)
++#define AXP1530_IC_TYPE (0x03)
++#define AXP1530_OUTPUT_CONTROL (0x10)
++#define AXP1530_DCDC_DVM_PWM (0x12)
++#define AXP1530_DCDC1_CONRTOL (0x13)
++#define AXP1530_DCDC2_CONRTOL (0x14)
++#define AXP1530_DCDC3_CONRTOL (0x15)
++#define AXP1530_ALDO1_CONRTOL (0x16)
++#define AXP1530_DLDO1_CONRTOL (0x17)
++#define AXP1530_POWER_STATUS (0x1A)
++#define AXP1530_PWROK_SET (0x1B)
++#define AXP1530_WAKEUP_CONRTOL (0x1C)
++#define AXP1530_OUTOUT_MONITOR (0x1D)
++#define AXP1530_POK_CONRTOL (0x1E)
++#define AXP1530_IRQ_ENABLE1 (0x20)
++#define AXP1530_IRQ_STATUS1 (0x21)
++#define AXP1530_LOCK_REG71 (0x70)
++#define AXP1530_EPROM_SET (0x71)
++#define AXP1530_DCDC12_DEFAULT (0x80)
++#define AXP1530_DCDC3_A1D1_DEFAULT (0x81)
++#define AXP1530_STARTUP_SEQ (0x82)
++#define AXP1530_STARTUP_RTCLDO (0x83)
++#define AXP1530_BIAS_I2C_ADDR (0x84)
++#define AXP1530_VREF_VRPN (0x85)
++#define AXP1530_VREF_VOL (0x86)
++#define AXP1530_FREQUENCY (0x87)
++
+ #define AXP803_POLYPHASE_CTRL		0x14
+ #define AXP803_FLDO1_V_OUT		0x1c
+ #define AXP803_FLDO2_V_OUT		0x1d
+@@ -343,7 +373,16 @@ enum {
+ 	AXP806_REG_ID_MAX,
+ };
+ 
+-enum {
++enum{
++    AXP1530_DCDC1 = 0,
++    AXP1530_DCDC2,
++    AXP1530_DCDC3,
++    AXP1530_LDO1, /* RTCLDO */
++    AXP1530_LDO2, /* RTCLDO1 */
++    AXP1530_REG_ID_MAX,
++};
++
++enum{
+ 	AXP809_DCDC1 = 0,
+ 	AXP809_DCDC2,
+ 	AXP809_DCDC3,
+@@ -598,7 +637,18 @@ enum axp806_irqs {
+ 	AXP806_IRQ_POK_RISE,
+ };
+ 
+-enum axp809_irqs {
++enum axp1530_irqs{
++    /* irq0 */
++    AXP1530_IRQ_TEMP_OVER,
++    AXP1530_IRQ_DCDC2_UNDER = 2,
++    AXP1530_IRQ_DCDC3_UNDER,
++    AXP1530_IRQ_POKLIRQ_EN,
++    AXP1530_IRQ_POKSIRQ_EN,
++    AXP1530_IRQ_KEY_L2H_EN,
++    AXP1530_IRQ_KEY_H2L_EN,
++};
++
++enum axp809_irqs{
+ 	AXP809_IRQ_ACIN_OVER_V = 1,
+ 	AXP809_IRQ_ACIN_PLUGIN,
+ 	AXP809_IRQ_ACIN_REMOVAL,
